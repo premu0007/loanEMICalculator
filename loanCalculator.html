@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMI Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container {
+      max-width: 950px;
+      margin: auto;
+      background: #fff;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 { text-align: center; color: #333; margin-bottom: 1.5rem; }
+
+    /* Loan Type Tabs */
+    .loan-tabs {
+      display: flex; justify-content: center; gap: 0;
+      margin-bottom: 2rem; border-radius: 12px; overflow: hidden; border: 2px solid #667eea;
+    }
+    .loan-tabs button {
+      flex: 1; padding: 0.9rem 1.5rem; border: none; background: #fff;
+      color: #667eea; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s;
+    }
+    .loan-tabs button:not(:last-child) { border-right: 2px solid #667eea; }
+    .loan-tabs button.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+    .loan-tabs button:hover:not(.active) { background: #f0f0ff; }
+    .loan-tabs button .tab-icon { display: block; font-size: 1.3rem; margin-bottom: 0.2rem; }
+
+    .input-group {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;
+    }
+    .input-group label { font-weight: 600; color: #555; display: block; margin-bottom: 0.3rem; }
+    .input-group input {
+      width: 100%; padding: 0.7rem; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;
+    }
+    .input-group input:focus { outline: none; border-color: #667eea; }
+
+    .loan-info {
+      background: #f8f9ff; border: 1px solid #e0e4ff; border-radius: 8px;
+      padding: 0.8rem 1rem; margin-bottom: 1.5rem; font-size: 0.85rem; color: #555;
+    }
+    .loan-info strong { color: #667eea; }
+
+    .results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .result-card {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff; padding: 1.2rem; border-radius: 12px; text-align: center;
+    }
+    .result-card h3 { font-size: 0.85rem; opacity: 0.9; margin-bottom: 0.5rem; }
+    .result-card p { font-size: 1.3rem; font-weight: 700; }
+
+    /* Extra Payment Section */
+    .extra-payment-section {
+      margin-top: 2rem; padding: 1.5rem; background: #f8f9ff;
+      border-radius: 12px; border: 2px solid #e0e4ff;
+    }
+    .extra-payment-section h2 { color: #444; margin-bottom: 1rem; font-size: 1.2rem; }
+    .extra-input-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;
+    }
+    .extra-input-row label { font-weight: 600; color: #555; display: block; margin-bottom: 0.3rem; }
+    .extra-input-row input {
+      width: 100%; padding: 0.7rem; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;
+    }
+    .extra-input-row input:focus { outline: none; border-color: #667eea; }
+
+    .comparison-results { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .comparison-card { padding: 1rem; border-radius: 10px; text-align: center; }
+    .comparison-card.original { background: #fff3e0; border: 2px solid #ffcc80; }
+    .comparison-card.prepay { background: #e8f5e9; border: 2px solid #a5d6a7; }
+    .comparison-card h4 { font-size: 0.8rem; color: #666; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .comparison-card p { font-size: 1.1rem; font-weight: 700; color: #333; }
+
+    .savings-banner {
+      margin-top: 1rem; padding: 1rem;
+      background: linear-gradient(135deg, #43a047, #66bb6a);
+      color: #fff; border-radius: 10px; text-align: center; display: none;
+    }
+    .savings-banner h3 { font-size: 0.9rem; opacity: 0.9; margin-bottom: 0.3rem; }
+    .savings-banner p { font-size: 1.2rem; font-weight: 700; }
+
+    /* Charts */
+    .charts-section { margin: 2rem 0; }
+    .charts-section h2 { color: #444; margin-bottom: 1rem; text-align: center; }
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: center; }
+    .chart-box { position: relative; text-align: center; }
+    .chart-box h4 { margin-bottom: 0.5rem; color: #555; font-size: 0.95rem; }
+    .chart-box canvas { max-height: 260px; }
+
+    /* Loan Tracker Section */
+    .tracker-section {
+      margin-top: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #fff8e1, #fff3e0);
+      border-radius: 12px; border: 2px solid #ffcc80;
+    }
+    .tracker-section h2 { color: #e65100; margin-bottom: 0.5rem; font-size: 1.2rem; }
+    .tracker-section .tracker-desc { color: #666; margin-bottom: 1rem; font-size: 0.9rem; }
+    .tracker-input-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;
+    }
+    .tracker-input-row label { font-weight: 600; color: #555; display: block; margin-bottom: 0.3rem; }
+    .tracker-input-row input, .tracker-input-row select {
+      width: 100%; padding: 0.7rem; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 1rem; transition: border-color 0.3s;
+    }
+    .tracker-input-row input:focus, .tracker-input-row select:focus { outline: none; border-color: #e65100; }
+
+    .tracker-results {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0;
+    }
+    .tracker-card {
+      padding: 1rem; border-radius: 10px; text-align: center; background: #fff; border: 1px solid #ffe0b2;
+    }
+    .tracker-card h4 { font-size: 0.75rem; color: #888; text-transform: uppercase; margin-bottom: 0.3rem; }
+    .tracker-card p { font-size: 1.1rem; font-weight: 700; color: #333; }
+    .tracker-card.highlight { background: #e8f5e9; border-color: #a5d6a7; }
+    .tracker-card.highlight p { color: #2e7d32; }
+    .tracker-card.warn { background: #fce4ec; border-color: #ef9a9a; }
+    .tracker-card.warn p { color: #c62828; }
+
+    .tracker-suggestions {
+      margin-top: 1.5rem; padding: 1rem; background: #fff; border-radius: 10px; border: 1px solid #e0e0e0;
+    }
+    .tracker-suggestions h3 { font-size: 1rem; color: #444; margin-bottom: 0.8rem; }
+    .suggestion-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.7rem 0; border-bottom: 1px solid #f5f5f5;
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item .extra-amt { font-weight: 700; color: #667eea; min-width: 100px; }
+    .suggestion-item .close-date { color: #2e7d32; font-weight: 600; }
+    .suggestion-item .time-saved { color: #888; font-size: 0.85rem; }
+
+    .commit-section {
+      margin-top: 1.5rem; padding: 1.2rem; background: linear-gradient(135deg, #e3f2fd, #e1f5fe);
+      border-radius: 10px; border: 2px solid #90caf9;
+    }
+    .commit-section h3 { color: #1565c0; margin-bottom: 0.8rem; font-size: 1rem; }
+    .commit-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .commit-row label { font-weight: 600; color: #555; display: block; margin-bottom: 0.3rem; }
+    .commit-row input {
+      width: 100%; padding: 0.7rem; border: 2px solid #ddd;
+      border-radius: 8px; font-size: 1rem;
+    }
+    .commit-row input:focus { outline: none; border-color: #1565c0; }
+    .commit-result {
+      padding: 1rem; background: #fff; border-radius: 8px; border: 1px solid #bbdefb; display: none;
+    }
+    .commit-result p { margin: 0.3rem 0; font-size: 0.95rem; color: #333; }
+    .commit-result .date-highlight { font-size: 1.2rem; font-weight: 700; color: #1565c0; }
+
+    /* Amortization Table */
+    .amortization-section { margin-top: 2rem; }
+    .amortization-section h2 { color: #444; margin-bottom: 1rem; }
+    .schedule-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .schedule-tabs button {
+      padding: 0.5rem 1.2rem; border: 2px solid #667eea; background: #fff;
+      color: #667eea; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s;
+    }
+    .schedule-tabs button.active { background: #667eea; color: #fff; }
+    .table-wrapper { max-height: 400px; overflow-y: auto; border-radius: 8px; border: 1px solid #eee; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.6rem 0.8rem; text-align: right; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; }
+    th { background: #667eea; color: #fff; position: sticky; top: 0; }
+    tr:hover { background: #f8f9ff; }
+
+    footer { text-align: center; margin-top: 2rem; color: #999; font-size: 0.8rem; }
+
+    @media (max-width: 600px) {
+      .input-group, .results, .extra-input-row, .comparison-results,
+      .tracker-input-row, .tracker-results, .commit-row, .charts-row { grid-template-columns: 1fr; }
+      .loan-tabs button { font-size: 0.85rem; padding: 0.7rem 0.5rem; }
+      .loan-tabs button .tab-icon { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📊 EMI Calculator</h1>
+
+    <!-- Loan Type Tabs -->
+    <div class="loan-tabs">
+      <button class="active" onclick="switchLoanType('home')">
+        <span class="tab-icon">🏠</span> Home Loan
+      </button>
+      <button onclick="switchLoanType('car')">
+        <span class="tab-icon">🚗</span> Car Loan
+      </button>
+      <button onclick="switchLoanType('personal')">
+        <span class="tab-icon">💳</span> Personal Loan
+      </button>
+    </div>
+
+    <div class="loan-info" id="loanInfo">
+      <strong>Home Loan:</strong> Typical rate 8–9.5% p.a. | Tenure up to 30 years | Extra payments can save lakhs in interest.
+    </div>
+
+    <div class="input-group">
+      <div>
+        <label id="amountLabel">Loan Amount (₹)</label>
+        <input type="number" id="loanAmount" value="5000000" oninput="calculate()" />
+      </div>
+      <div>
+        <label>Interest Rate (% per annum)</label>
+        <input type="number" id="interestRate" value="8.5" step="0.1" oninput="calculate()" />
+      </div>
+      <div>
+        <label>Loan Tenure (Years)</label>
+        <input type="number" id="tenure" value="20" oninput="calculate()" />
+      </div>
+      <div>
+        <label>Loan Tenure (Months)</label>
+        <input type="number" id="tenureMonths" value="240" oninput="calculateFromMonths()" />
+      </div>
+    </div>
+
+    <div class="results">
+      <div class="result-card">
+        <h3>Monthly EMI</h3>
+        <p id="emiResult">₹0</p>
+      </div>
+      <div class="result-card">
+        <h3>Total Interest</h3>
+        <p id="totalInterest">₹0</p>
+      </div>
+      <div class="result-card">
+        <h3>Total Payment</h3>
+        <p id="totalPayment">₹0</p>
+      </div>
+    </div>
+
+    <!-- Extra Payment Section -->
+    <div class="extra-payment-section">
+      <h2 id="extraSectionTitle">💰 Extra Payment Analysis — Home Loan</h2>
+      <p style="color:#666; margin-bottom:1rem; font-size:0.9rem;" id="extraSectionDesc">
+        See how paying extra each month reduces your home loan tenure and total interest.
+      </p>
+      <div class="extra-input-row">
+        <div>
+          <label>Extra Monthly Payment (₹)</label>
+          <input type="number" id="extraPayment" value="10000" oninput="calculate()" />
+        </div>
+        <div>
+          <label>Start Extra Payment From Month</label>
+          <input type="number" id="extraStartMonth" value="1" min="1" oninput="calculate()" />
+        </div>
+      </div>
+      <div class="comparison-results">
+        <div class="comparison-card original">
+          <h4>Original Tenure</h4>
+          <p id="originalTenure">-</p>
+          <h4 style="margin-top:0.5rem;">Total Interest Paid</h4>
+          <p id="originalInterestTotal">-</p>
+        </div>
+        <div class="comparison-card prepay">
+          <h4>New Tenure (with extra payment)</h4>
+          <p id="newTenure">-</p>
+          <h4 style="margin-top:0.5rem;">Total Interest Paid</h4>
+          <p id="newInterestTotal">-</p>
+        </div>
+      </div>
+      <div class="savings-banner" id="savingsBanner">
+        <h3>🎉 You Save</h3>
+        <p id="savingsAmount">-</p>
+        <p id="savingsTime" style="font-size:0.9rem; opacity:0.9; margin-top:0.3rem;">-</p>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-section">
+      <h2>Loan Breakdown</h2>
+      <div class="charts-row">
+        <div class="chart-box">
+          <h4>Original Loan</h4>
+          <canvas id="chartOriginal"></canvas>
+        </div>
+        <div class="chart-box">
+          <h4>With Extra Payment</h4>
+          <canvas id="chartPrepay"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loan Tracker Section -->
+    <div class="tracker-section">
+      <h2>📅 Loan Progress Tracker</h2>
+      <p class="tracker-desc">Enter when your loan started to see how much you've paid, what's remaining, and smart suggestions to close it faster.</p>
+
+      <div class="tracker-input-row">
+        <div>
+          <label>Loan Start Month</label>
+          <select id="trackerMonth" onchange="calculateTracker()">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+        <div>
+          <label>Loan Start Year</label>
+          <input type="number" id="trackerYear" value="2022" min="2000" max="2030" oninput="calculateTracker()" />
+        </div>
+      </div>
+
+      <div class="tracker-results" id="trackerResults" style="display:none;">
+        <div class="tracker-card">
+          <h4>EMIs Paid So Far</h4>
+          <p id="trackerEmisPaid">-</p>
+        </div>
+        <div class="tracker-card warn">
+          <h4>Interest Paid Till Now</h4>
+          <p id="trackerInterestPaid">-</p>
+        </div>
+        <div class="tracker-card">
+          <h4>Principal Paid Till Now</h4>
+          <p id="trackerPrincipalPaid">-</p>
+        </div>
+        <div class="tracker-card highlight">
+          <h4>Remaining Balance</h4>
+          <p id="trackerBalance">-</p>
+        </div>
+        <div class="tracker-card">
+          <h4>Remaining Months</h4>
+          <p id="trackerRemainingMonths">-</p>
+        </div>
+        <div class="tracker-card">
+          <h4>Original End Date</h4>
+          <p id="trackerEndDate">-</p>
+        </div>
+      </div>
+
+      <!-- Suggestions -->
+      <div class="tracker-suggestions" id="trackerSuggestions" style="display:none;">
+        <h3>💡 Extra Payment Suggestions — Close Your Loan Faster</h3>
+        <div id="suggestionsList"></div>
+      </div>
+
+      <!-- Commit to Extra Payment -->
+      <div class="commit-section" id="commitSection" style="display:none;">
+        <h3>🎯 Ready to Start Paying Extra?</h3>
+        <p style="color:#555; margin-bottom:1rem; font-size:0.9rem;">Enter how much extra you can commit monthly from now. We'll show your new loan closure date.</p>
+        <div class="commit-row">
+          <div>
+            <label>Extra Amount You'll Pay Monthly (₹)</label>
+            <input type="number" id="commitAmount" value="5000" oninput="calculateCommit()" />
+          </div>
+          <div>
+            <label>Starting From</label>
+            <input type="text" id="commitStartLabel" readonly />
+          </div>
+        </div>
+        <div class="commit-result" id="commitResult">
+          <p>📆 Your loan will now close by: <span class="date-highlight" id="commitCloseDate">-</span></p>
+          <p>⏱️ Time saved: <strong id="commitTimeSaved">-</strong></p>
+          <p>💰 Interest saved: <strong id="commitInterestSaved" style="color:#2e7d32;">-</strong></p>
+          <p>📊 Total you'll pay: <strong id="commitTotalPay">-</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Amortization -->
+    <div class="amortization-section">
+      <h2>Amortization Schedule</h2>
+      <div class="schedule-tabs">
+        <button class="active" onclick="showScheduleTab('original')">Original</button>
+        <button onclick="showScheduleTab('prepay')">With Extra Payment</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Month</th><th>EMI Paid</th><th>Principal</th><th>Interest</th><th>Balance</th></tr>
+          </thead>
+          <tbody id="amortBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>Built locally with HTML, CSS, JavaScript & Chart.js</footer>
+  </div>
+
+  <script>
+    let chartOriginal;
+    let chartPrepay;
+    let originalSchedule = [];
+    let prepaySchedule = [];
+    let currentScheduleTab = 'original';
+    let currentLoanType = 'home';
+
+    const loanPresets = {
+      home: {
+        amount: 5000000, rate: 8.5, tenure: 20, extraPayment: 10000,
+        label: 'Home Loan', amountLabel: 'Loan Amount (₹)',
+        info: '<strong>Home Loan:</strong> Typical rate 8–9.5% p.a. | Tenure up to 30 years | Extra payments can save lakhs in interest.',
+        sectionTitle: '💰 Extra Payment Analysis — Home Loan',
+        sectionDesc: 'See how paying extra each month reduces your home loan tenure and total interest.'
+      },
+      car: {
+        amount: 800000, rate: 9.5, tenure: 5, extraPayment: 3000,
+        label: 'Car Loan', amountLabel: 'Vehicle Loan Amount (₹)',
+        info: '<strong>Car Loan:</strong> Typical rate 8.5–12% p.a. | Tenure 1–7 years | Prepaying early saves significant interest on depreciating assets.',
+        sectionTitle: '💰 Extra Payment Analysis — Car Loan',
+        sectionDesc: 'See how paying extra each month helps you own your car sooner and pay less interest.'
+      },
+      personal: {
+        amount: 500000, rate: 14, tenure: 3, extraPayment: 2000,
+        label: 'Personal Loan', amountLabel: 'Loan Amount (₹)',
+        info: '<strong>Personal Loan:</strong> Typical rate 11–18% p.a. | Tenure 1–5 years | High interest makes prepayment highly beneficial.',
+        sectionTitle: '💰 Extra Payment Analysis — Personal Loan',
+        sectionDesc: 'Personal loans carry high interest. Even small extra payments make a big difference.'
+      }
+    };
+
+    function switchLoanType(type) {
+      currentLoanType = type;
+      const preset = loanPresets[type];
+      const tabs = document.querySelectorAll('.loan-tabs button');
+      tabs.forEach(btn => btn.classList.remove('active'));
+      if (type === 'home') tabs[0].classList.add('active');
+      else if (type === 'car') tabs[1].classList.add('active');
+      else tabs[2].classList.add('active');
+
+      document.getElementById('loanAmount').value = preset.amount;
+      document.getElementById('interestRate').value = preset.rate;
+      document.getElementById('tenure').value = preset.tenure;
+      document.getElementById('extraPayment').value = preset.extraPayment;
+      document.getElementById('extraStartMonth').value = 1;
+      document.getElementById('amountLabel').textContent = preset.amountLabel;
+      document.getElementById('loanInfo').innerHTML = preset.info;
+      document.getElementById('extraSectionTitle').textContent = preset.sectionTitle;
+      document.getElementById('extraSectionDesc').textContent = preset.sectionDesc;
+      calculate();
+    }
+
+    function formatCurrency(num) {
+      return '₹' + Math.round(num).toLocaleString('en-IN');
+    }
+
+    function formatMonths(months) {
+      const years = Math.floor(months / 12);
+      const rem = months % 12;
+      if (years === 0) return `${rem} month${rem !== 1 ? 's' : ''}`;
+      if (rem === 0) return `${years} year${years !== 1 ? 's' : ''}`;
+      return `${years} yr${years !== 1 ? 's' : ''} ${rem} mo`;
+    }
+
+    function getMonthName(m) {
+      const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return names[(m - 1) % 12];
+    }
+
+    function addMonthsToDate(startMonth, startYear, months) {
+      let m = startMonth + months - 1;
+      let y = startYear + Math.floor((m - 1) / 12);
+      m = ((m - 1) % 12) + 1;
+      return { month: m, year: y };
+    }
+
+    function calculateFromMonths() {
+      const months = parseInt(document.getElementById('tenureMonths').value) || 0;
+      document.getElementById('tenure').value = (months / 12).toFixed(1);
+      calculate();
+    }
+
+    function calculate() {
+      const P = parseFloat(document.getElementById('loanAmount').value) || 0;
+      const annualRate = parseFloat(document.getElementById('interestRate').value) || 0;
+      const years = parseFloat(document.getElementById('tenure').value) || 0;
+      const extraPayment = parseFloat(document.getElementById('extraPayment').value) || 0;
+      const extraStartMonth = parseInt(document.getElementById('extraStartMonth').value) || 1;
+
+      const N = Math.round(years * 12);
+      document.getElementById('tenureMonths').value = N;
+      const r = annualRate / 12 / 100;
+
+      if (P <= 0 || r <= 0 || N <= 0) {
+        document.getElementById('emiResult').textContent = '₹0';
+        document.getElementById('totalInterest').textContent = '₹0';
+        document.getElementById('totalPayment').textContent = '₹0';
+        return;
+      }
+
+      const emi = P * r * Math.pow(1 + r, N) / (Math.pow(1 + r, N) - 1);
+      const totalPay = emi * N;
+      const totalInt = totalPay - P;
+
+      document.getElementById('emiResult').textContent = formatCurrency(emi);
+      document.getElementById('totalInterest').textContent = formatCurrency(totalInt);
+      document.getElementById('totalPayment').textContent = formatCurrency(totalPay);
+
+      // Original amortization
+      originalSchedule = [];
+      let balance = P;
+      let totalInterestOriginal = 0;
+      for (let i = 1; i <= N; i++) {
+        const intPart = balance * r;
+        const prinPart = emi - intPart;
+        balance -= prinPart;
+        totalInterestOriginal += intPart;
+        originalSchedule.push({ month: i, emiPaid: emi, principal: prinPart, interest: intPart, balance: Math.max(balance, 0) });
+      }
+
+      // Prepayment amortization
+      prepaySchedule = [];
+      balance = P;
+      let totalInterestPrepay = 0;
+      let month = 0;
+      while (balance > 0.5) {
+        month++;
+        const intPart = balance * r;
+        let prinPart = emi - intPart;
+        let totalPaid = emi;
+        if (month >= extraStartMonth && extraPayment > 0) {
+          prinPart += extraPayment;
+          totalPaid += extraPayment;
+        }
+        if (prinPart >= balance) {
+          prinPart = balance; totalPaid = prinPart + intPart; balance = 0;
+        } else { balance -= prinPart; }
+        totalInterestPrepay += intPart;
+        prepaySchedule.push({ month, emiPaid: totalPaid, principal: prinPart, interest: intPart, balance: Math.max(balance, 0) });
+        if (month > N * 2) break;
+      }
+
+      const newTenureMonths = prepaySchedule.length;
+      document.getElementById('originalTenure').textContent = formatMonths(N);
+      document.getElementById('originalInterestTotal').textContent = formatCurrency(totalInterestOriginal);
+      document.getElementById('newTenure').textContent = formatMonths(newTenureMonths);
+      document.getElementById('newInterestTotal').textContent = formatCurrency(totalInterestPrepay);
+
+      const interestSaved = totalInterestOriginal - totalInterestPrepay;
+      const monthsSaved = N - newTenureMonths;
+      const banner = document.getElementById('savingsBanner');
+      if (extraPayment > 0 && interestSaved > 0) {
+        banner.style.display = 'block';
+        document.getElementById('savingsAmount').textContent = formatCurrency(interestSaved) + ' in interest';
+        document.getElementById('savingsTime').textContent = `Loan closes ${formatMonths(monthsSaved)} earlier!`;
+      } else { banner.style.display = 'none'; }
+
+      renderChart(P, totalInterestOriginal, totalInterestPrepay);
+      renderTable();
+      calculateTracker();
+    }
+
+    function renderChart(principal, intOriginal, intPrepay) {
+      if (chartOriginal) chartOriginal.destroy();
+      if (chartPrepay) chartPrepay.destroy();
+
+      const animationOpts = { animateRotate: true, animateScale: true, duration: 1200, easing: 'easeOutQuart' };
+      const tooltipCallback = {
+        label: function(context) {
+          const value = formatCurrency(context.raw);
+          const total = context.dataset.data.reduce((a, b) => a + b, 0);
+          const pct = ((context.raw / total) * 100).toFixed(1);
+          return `${context.label}: ${value} (${pct}%)`;
+        }
+      };
+
+      const ctx1 = document.getElementById('chartOriginal').getContext('2d');
+      chartOriginal = new Chart(ctx1, {
+        type: 'doughnut',
+        data: { labels: ['Principal', 'Interest'], datasets: [{ data: [principal, intOriginal], backgroundColor: ['#667eea', '#ff6b6b'], borderColor: ['#fff','#fff'], borderWidth: 3, hoverOffset: 15 }] },
+        options: { responsive: true, animation: animationOpts, cutout: '45%', plugins: { legend: { position: 'bottom', labels: { padding: 15, font: { size: 12, weight: '600' } } }, tooltip: { callbacks: tooltipCallback } } }
+      });
+
+      const ctx2 = document.getElementById('chartPrepay').getContext('2d');
+      chartPrepay = new Chart(ctx2, {
+        type: 'doughnut',
+        data: { labels: ['Principal', 'Interest', 'Interest Saved'], datasets: [{ data: [principal, intPrepay, intOriginal - intPrepay], backgroundColor: ['#667eea', '#ff6b6b', '#66bb6a'], borderColor: ['#fff','#fff','#fff'], borderWidth: 3, hoverOffset: 15 }] },
+        options: { responsive: true, animation: animationOpts, cutout: '45%', plugins: { legend: { position: 'bottom', labels: { padding: 15, font: { size: 12, weight: '600' } } }, tooltip: { callbacks: tooltipCallback } } }
+      });
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('amortBody');
+      const schedule = currentScheduleTab === 'original' ? originalSchedule : prepaySchedule;
+      let html = '';
+      for (const row of schedule) {
+        html += `<tr><td>${row.month}</td><td>${formatCurrency(row.emiPaid)}</td><td>${formatCurrency(row.principal)}</td><td>${formatCurrency(row.interest)}</td><td>${formatCurrency(row.balance)}</td></tr>`;
+      }
+      tbody.innerHTML = html;
+    }
+
+    function showScheduleTab(tab) {
+      currentScheduleTab = tab;
+      const buttons = document.querySelectorAll('.schedule-tabs button');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      if (tab === 'original') buttons[0].classList.add('active');
+      else buttons[1].classList.add('active');
+      renderTable();
+    }
+
+    // ===== LOAN TRACKER =====
+    function calculateTracker() {
+      const P = parseFloat(document.getElementById('loanAmount').value) || 0;
+      const annualRate = parseFloat(document.getElementById('interestRate').value) || 0;
+      const years = parseFloat(document.getElementById('tenure').value) || 0;
+      const startMonth = parseInt(document.getElementById('trackerMonth').value) || 1;
+      const startYear = parseInt(document.getElementById('trackerYear').value) || 2022;
+
+      const N = Math.round(years * 12);
+      const r = annualRate / 12 / 100;
+      if (P <= 0 || r <= 0 || N <= 0) return;
+
+      const emi = P * r * Math.pow(1 + r, N) / (Math.pow(1 + r, N) - 1);
+
+      // Calculate months elapsed
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      let monthsElapsed = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+      if (monthsElapsed < 0) monthsElapsed = 0;
+      if (monthsElapsed > N) monthsElapsed = N;
+
+      // Calculate paid so far
+      let balance = P;
+      let totalInterestPaid = 0;
+      let totalPrincipalPaid = 0;
+      for (let i = 1; i <= monthsElapsed; i++) {
+        const intPart = balance * r;
+        const prinPart = emi - intPart;
+        totalInterestPaid += intPart;
+        totalPrincipalPaid += prinPart;
+        balance -= prinPart;
+      }
+      balance = Math.max(balance, 0);
+      const remainingMonths = N - monthsElapsed;
+
+      // Show results
+      document.getElementById('trackerResults').style.display = 'grid';
+      document.getElementById('trackerEmisPaid').textContent = monthsElapsed + ' months';
+      document.getElementById('trackerInterestPaid').textContent = formatCurrency(totalInterestPaid);
+      document.getElementById('trackerPrincipalPaid').textContent = formatCurrency(totalPrincipalPaid);
+      document.getElementById('trackerBalance').textContent = formatCurrency(balance);
+      document.getElementById('trackerRemainingMonths').textContent = formatMonths(remainingMonths);
+
+      const endDate = addMonthsToDate(startMonth, startYear, N);
+      document.getElementById('trackerEndDate').textContent = getMonthName(endDate.month) + ' ' + endDate.year;
+
+      // Generate suggestions
+      if (balance > 0 && remainingMonths > 0) {
+        generateSuggestions(balance, r, emi, remainingMonths, monthsElapsed, startMonth, startYear, N);
+      }
+    }
+
+    function generateSuggestions(balance, r, emi, remainingMonths, monthsElapsed, startMonth, startYear, totalN) {
+      const suggestionsDiv = document.getElementById('trackerSuggestions');
+      const listDiv = document.getElementById('suggestionsList');
+      suggestionsDiv.style.display = 'block';
+
+      // Suggest different extra amounts
+      const extras = [2000, 5000, 10000, 15000, 20000, 30000];
+      let html = '';
+
+      for (const extra of extras) {
+        if (extra >= emi * 3) continue; // skip unreasonable amounts
+        let bal = balance;
+        let months = 0;
+        while (bal > 0.5) {
+          months++;
+          const intPart = bal * r;
+          let prinPart = emi - intPart + extra;
+          if (prinPart >= bal) { bal = 0; } else { bal -= prinPart; }
+          if (months > remainingMonths * 2) break;
+        }
+        const timeSaved = remainingMonths - months;
+        if (timeSaved <= 0) continue;
+
+        const closeDate = addMonthsToDate(startMonth, startYear, monthsElapsed + months);
+        const closeDateStr = getMonthName(closeDate.month) + ' ' + closeDate.year;
+
+        html += `<div class="suggestion-item">
+          <span class="extra-amt">+${formatCurrency(extra)}/mo</span>
+          <span class="close-date">Closes: ${closeDateStr}</span>
+          <span class="time-saved">${formatMonths(timeSaved)} earlier</span>
+        </div>`;
+      }
+
+      listDiv.innerHTML = html;
+
+      // Show commit section
+      const commitSection = document.getElementById('commitSection');
+      commitSection.style.display = 'block';
+      const now = new Date();
+      document.getElementById('commitStartLabel').value = getMonthName(now.getMonth() + 1) + ' ' + now.getFullYear();
+      calculateCommit();
+    }
+
+    function calculateCommit() {
+      const P = parseFloat(document.getElementById('loanAmount').value) || 0;
+      const annualRate = parseFloat(document.getElementById('interestRate').value) || 0;
+      const years = parseFloat(document.getElementById('tenure').value) || 0;
+      const startMonth = parseInt(document.getElementById('trackerMonth').value) || 1;
+      const startYear = parseInt(document.getElementById('trackerYear').value) || 2022;
+      const commitExtra = parseFloat(document.getElementById('commitAmount').value) || 0;
+
+      const N = Math.round(years * 12);
+      const r = annualRate / 12 / 100;
+      if (P <= 0 || r <= 0 || N <= 0) return;
+
+      const emi = P * r * Math.pow(1 + r, N) / (Math.pow(1 + r, N) - 1);
+
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      let monthsElapsed = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+      if (monthsElapsed < 0) monthsElapsed = 0;
+      if (monthsElapsed > N) monthsElapsed = N;
+
+      // Get current balance
+      let balance = P;
+      let interestBeforeCommit = 0;
+      for (let i = 1; i <= monthsElapsed; i++) {
+        const intPart = balance * r;
+        balance -= (emi - intPart);
+        interestBeforeCommit += intPart;
+      }
+      balance = Math.max(balance, 0);
+
+      if (balance <= 0 || commitExtra <= 0) {
+        document.getElementById('commitResult').style.display = 'none';
+        return;
+      }
+
+      // Calculate with extra from now
+      let bal = balance;
+      let months = 0;
+      let interestAfterCommit = 0;
+      while (bal > 0.5) {
+        months++;
+        const intPart = bal * r;
+        let prinPart = emi - intPart + commitExtra;
+        interestAfterCommit += intPart;
+        if (prinPart >= bal) { bal = 0; } else { bal -= prinPart; }
+        if (months > N * 2) break;
+      }
+
+      // Without extra (remaining)
+      let balNoExtra = balance;
+      let monthsNoExtra = 0;
+      let interestNoExtra = 0;
+      while (balNoExtra > 0.5) {
+        monthsNoExtra++;
+        const intPart = balNoExtra * r;
+        const prinPart = emi - intPart;
+        interestNoExtra += intPart;
+        balNoExtra -= prinPart;
+        if (monthsNoExtra > N * 2) break;
+      }
+
+      const closeDate = addMonthsToDate(currentMonth, currentYear, months);
+      const closeDateStr = getMonthName(closeDate.month) + ' ' + closeDate.year;
+      const timeSaved = monthsNoExtra - months;
+      const interestSaved = interestNoExtra - interestAfterCommit;
+      const totalPayWithExtra = interestBeforeCommit + interestAfterCommit + P;
+
+      const resultDiv = document.getElementById('commitResult');
+      resultDiv.style.display = 'block';
+      document.getElementById('commitCloseDate').textContent = closeDateStr;
+      document.getElementById('commitTimeSaved').textContent = formatMonths(timeSaved);
+      document.getElementById('commitInterestSaved').textContent = formatCurrency(interestSaved);
+      document.getElementById('commitTotalPay').textContent = formatCurrency(totalPayWithExtra);
+    }
+
+    // Initial
+    calculate();
+  </script>
+</body>
+</html>
